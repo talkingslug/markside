@@ -1,14 +1,14 @@
 #!/usr/bin/perl
-
 #
-# Markdown -- A text-to-HTML conversion tool for web writers
+# Markside -- A markup language
 #
 # Copyright (c) 2004 John Gruber
 # <http://daringfireball.net/projects/markdown/>
 #
+# Maintained by @talkingslug
 
 
-package Markdown;
+package Markside;
 require 5.006_000;
 use strict;
 use warnings;
@@ -99,8 +99,8 @@ unless ($@) {
 		require MT::Plugin;
 		import  MT::Plugin;
 		my $plugin = new MT::Plugin({
-			name => "Markdown",
-			description => "A plain-text-to-HTML formatting plugin. (Version: $VERSION)",
+			name => "Markside",
+			description => "A markup language. (Version: $VERSION)",
 			doc_link => 'http://daringfireball.net/projects/markdown/'
 		});
 		MT->add_plugin( $plugin );
@@ -197,9 +197,9 @@ else {
 			'html4tags',
 		);
 		if ($cli_opts{'version'}) {		# Version info
-			print "\nThis is Markdown, version $VERSION.\n";
-			print "Copyright 2004 John Gruber\n";
-			print "http://daringfireball.net/projects/markdown/\n\n";
+			print "\nThis is Markside, version $VERSION.\n";
+			print "It's a markup language.";
+			print "Whats up?";
 			exit 0;
 		}
 		if ($cli_opts{'shortversion'}) {		# Just the version number string.
@@ -715,6 +715,47 @@ sub _DoImages {
 }
 
 
+sub _DoHeadersRED {
+	my $text = shift;
+
+	# Setext-style headers:
+	#	  Header 1
+	#	  ========
+	#  
+	#	  Header 2
+	#	  --------
+	#
+	$text =~ s{ ^(.+)[ \t]*\n=+[ \t]*\n+ }{
+		"<h1>"  .  _RunSpanGamut($1)  .  "</h1>\n\n";
+	}egmx;
+
+	$text =~ s{ ^(.+)[ \t]*\n-+[ \t]*\n+ }{
+		"<h2>"  .  _RunSpanGamut($1)  .  "</h2>\n\n";
+	}egmx;
+
+
+	# atx-style headers:
+	#	# Header 1
+	#	## Header 2
+	#	## Header 2 with closing hashes ##
+	#	...
+	#	###### Header 6
+	#
+	$text =~ s{
+			^(\#/!{1,6})	# $1 = string of #!'s (dont put images)
+			[ \t]*
+			(.+?)		# $2 = Header text
+			[ \t]*
+			\#/!*			# optional closing #!'s (not counted)
+			\n+
+		}{
+			my $h_level = length($1);
+			"<h$h_level style='color:red;'>"  .  _RunSpanGamut($2)  .  "</h$h_level>\n\n";
+		}egmx;
+
+	return $text;
+}
+
 sub _DoHeaders {
 	my $text = shift;
 
@@ -756,7 +797,6 @@ sub _DoHeaders {
 	return $text;
 }
 
-
 sub _DoLists {
 #
 # Form HTML ordered (numbered) and unordered (bulleted) lists.
@@ -766,7 +806,7 @@ sub _DoLists {
 
 	# Re-usable patterns to match list item bullets and number markers:
 	my $marker_ul  = qr/[*+-]/;
-	my $marker_ol  = qr/\d+[.]/;
+	my $marker_ol  = qr/\d+[.!;]/;
 	my $marker_any = qr/(?:$marker_ul|$marker_ol)/;
 
 	# Re-usable pattern to match any entirel ul or ol list:
@@ -938,7 +978,92 @@ sub _DoCodeBlocks {
 			$codeblock =~ s/\A\n+//; # trim leading newlines
 			$codeblock =~ s/\s+\z//; # trim trailing whitespace
 
-			$result = "\n\n<pre><code>" . $codeblock . "\n</code></pre>\n\n";
+			$result = "\n<script src='//unpkg.com/@highlightjs/cdn-assets@11.7.0/highlight.min.js'></script>\n<style>pre code.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em
+}
+
+code.hljs {
+    padding: 3px 5px
+}
+
+/*!
+  Theme: GitHub Dark
+  Description: Dark theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-dark
+  Current colors taken from GitHub's CSS
+*/
+.hljs {
+    color: #c9d1d9;
+    background: #0d1117
+}
+
+.hljs-doctag,.hljs-keyword,.hljs-meta .hljs-keyword,.hljs-template-tag,.hljs-template-variable,.hljs-type,.hljs-variable.language_ {
+    color: #ff7b72
+}
+
+.hljs-title,.hljs-title.class_,.hljs-title.class_.inherited__,.hljs-title.function_ {
+    color: #d2a8ff
+}
+
+.hljs-attr,.hljs-attribute,.hljs-literal,.hljs-meta,.hljs-number,.hljs-operator,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-id,.hljs-variable {
+    color: #79c0ff
+}
+
+.hljs-meta .hljs-string,.hljs-regexp,.hljs-string {
+    color: #a5d6ff
+}
+
+.hljs-built_in,.hljs-symbol {
+    color: #ffa657
+}
+
+.hljs-code,.hljs-comment,.hljs-formula {
+    color: #8b949e
+}
+
+.hljs-name,.hljs-quote,.hljs-selector-pseudo,.hljs-selector-tag {
+    color: #7ee787
+}
+
+.hljs-subst {
+    color: #c9d1d9
+}
+
+.hljs-section {
+    color: #1f6feb;
+    font-weight: 700
+}
+
+.hljs-bullet {
+    color: #f2cc60
+}
+
+.hljs-emphasis {
+    color: #c9d1d9;
+    font-style: italic
+}
+
+.hljs-strong {
+    color: #c9d1d9;
+    font-weight: 700
+}
+
+.hljs-addition {
+    color: #aff5b4;
+    background-color: #033a16
+}
+
+.hljs-deletion {
+    color: #ffdcd7;
+    background-color: #67060c
+}
+</style>\n<script>hljs.highlightAll();</script>\n<pre><code>" . $codeblock . "\n</code></pre>\n\n";
 
 			$result;
 		}egmx;
@@ -986,7 +1111,92 @@ sub _DoCodeSpans {
  			$c =~ s/^[ \t]*//g; # leading whitespace
  			$c =~ s/[ \t]*$//g; # trailing whitespace
  			$c = _EncodeCode($c);
-			"<code>$c</code>";
+			"\n<script src='//unpkg.com/@highlightjs/cdn-assets@11.7.0/highlight.min.js'></script>\n<style>pre code.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em
+}
+
+code.hljs {
+    padding: 3px 5px
+}
+
+/*!
+  Theme: GitHub Dark
+  Description: Dark theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
+
+  Outdated base version: https://github.com/primer/github-syntax-dark
+  Current colors taken from GitHub's CSS
+*/
+.hljs {
+    color: #c9d1d9;
+    background: #0d1117
+}
+
+.hljs-doctag,.hljs-keyword,.hljs-meta .hljs-keyword,.hljs-template-tag,.hljs-template-variable,.hljs-type,.hljs-variable.language_ {
+    color: #ff7b72
+}
+
+.hljs-title,.hljs-title.class_,.hljs-title.class_.inherited__,.hljs-title.function_ {
+    color: #d2a8ff
+}
+
+.hljs-attr,.hljs-attribute,.hljs-literal,.hljs-meta,.hljs-number,.hljs-operator,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-id,.hljs-variable {
+    color: #79c0ff
+}
+
+.hljs-meta .hljs-string,.hljs-regexp,.hljs-string {
+    color: #a5d6ff
+}
+
+.hljs-built_in,.hljs-symbol {
+    color: #ffa657
+}
+
+.hljs-code,.hljs-comment,.hljs-formula {
+    color: #8b949e
+}
+
+.hljs-name,.hljs-quote,.hljs-selector-pseudo,.hljs-selector-tag {
+    color: #7ee787
+}
+
+.hljs-subst {
+    color: #c9d1d9
+}
+
+.hljs-section {
+    color: #1f6feb;
+    font-weight: 700
+}
+
+.hljs-bullet {
+    color: #f2cc60
+}
+
+.hljs-emphasis {
+    color: #c9d1d9;
+    font-style: italic
+}
+
+.hljs-strong {
+    color: #c9d1d9;
+    font-weight: 700
+}
+
+.hljs-addition {
+    color: #aff5b4;
+    background-color: #033a16
+}
+
+.hljs-deletion {
+    color: #ffdcd7;
+    background-color: #67060c
+}
+</style>\n<script>hljs.highlightAll();</script>\n<code>$c</code>";
 		@egsx;
 
 	return $text;
@@ -1041,6 +1251,12 @@ sub _DoItalicsAndBold {
 
 	$text =~ s{ (\*|_) (?=\S) (.+?) (?<=\S) \1 }
 		{<em>$2</em>}gsx;
+		
+	$text =~ s{ (\*\*\*|__) (?=\S) (.+?[*_]*) (?<=\S) \1 }
+		{<p style='color:red'>$2</p>}gsx;
+
+	$text =~ s{ (\*\#\*|_) (?=\S) (.+?) (?<=\S) \1 }
+		{<p style='color:blue'>$2</p>}gsx;
 
 	return $text;
 }
